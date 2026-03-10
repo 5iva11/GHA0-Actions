@@ -1,0 +1,12 @@
+{
+  "name": "playwright-python-reporting-pipeline",
+  "version": "1.0.0",
+  "description": "Plug-and-play Playwright Python test reporting pipeline with GitHub Actions and GitHub Pages",
+  "scripts": {
+    "dashboard": "node scripts/generate-dashboard.js",
+    "cleanup":   "node scripts/cleanup-reports.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

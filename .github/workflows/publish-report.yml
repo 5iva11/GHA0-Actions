@@ -1,0 +1,95 @@
+# ============================================================
+#  publish-report.yml
+#  Reads the JSON run history stored in the gh-pages branch,
+#  generates an interactive HTML dashboard via
+#  generate-dashboard.js, and publishes everything to
+#  GitHub Pages.
+# ============================================================
+
+name: 📊 Publish Dashboard to GitHub Pages
+
+on:
+  # Triggered by run-tests.yml after every run via workflow_dispatch.
+  # (Removing the push:gh-pages trigger avoids running this workflow twice
+  #  per test run, since run-tests.yml already dispatches it explicitly.)
+  workflow_dispatch:
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true   # only one deploy at a time
+
+permissions:
+  contents: read
+  pages:    write
+  id-token: write            # required by the official Pages action
+
+jobs:
+  build-and-deploy:
+    name: Generate Dashboard & Deploy to Pages
+    runs-on: ubuntu-latest
+
+    # Use the official GitHub Pages environment so the
+    # deployment shows up in the repository's Deployments tab.
+    environment:
+      name: github-pages
+      url:  ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      # ── 1. Checkout the main branch (for scripts) ────────────
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      # -- 2. Also checkout gh-pages for run history ────────────
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref:  gh-pages
+          path: gh-pages-src
+        continue-on-error: true   # safe on very first run before gh-pages exists
+
+      # ── 3. Node.js  ──────────────────────────────────────────
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # No npm install needed — generate-dashboard.js uses only built-in modules
+
+      # ── 4. Generate the dashboard HTML ───────────────────────
+      - name: Generate HTML dashboard
+        run: node scripts/generate-dashboard.js
+        env:
+          # Where the run history lives (checked out above)
+          RUNS_DIR:    gh-pages-src/runs
+          # Where to write the finished dashboard site
+          OUTPUT_DIR:  dashboard-output
+          # How many runs to display in the dashboard
+          MAX_RUNS:    '20'
+          # Title shown in the dashboard header
+          DASHBOARD_TITLE: 'Playwright Test Dashboard'
+
+      # ── 5. Copy all Playwright HTML reports into output ───────
+      #       so GitHub Pages serves them at /runs/<id>/report-*/
+      - name: Copy run reports into dashboard output
+        run: |
+          if [ -d gh-pages-src/runs ]; then
+            cp -r gh-pages-src/runs dashboard-output/runs
+          fi
+          # Preserve .nojekyll so Pages doesn't skip _* files
+          touch dashboard-output/.nojekyll
+
+      # ── 6. Configure GitHub Pages ────────────────────────────
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v4
+
+      # ── 7. Upload the built site as a Pages artifact ─────────
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard-output/
+
+      # ── 8. Deploy to GitHub Pages ─────────────────────────────
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

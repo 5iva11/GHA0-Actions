@@ -1,0 +1,22 @@
+# Node (used only for dashboard/cleanup scripts)
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Playwright / pytest output (generated at runtime, not committed to main)
+pytest-report/
+test-results/
+downloaded-artifacts/
+dashboard-output/
+gh-pages-dir/
+gh-pages-src/
+
+# OS
+.DS_Store
+Thumbs.db
